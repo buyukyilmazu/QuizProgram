@@ -1,5 +1,4 @@
 import socket
-import threading
 
 
 class MultiplexerServer:
@@ -16,26 +15,11 @@ class MultiplexerServer:
         self.serverSocketForClients.bind(('', multiplexerServerPort))
         self.serverSocketForClients.listen(10)
 
-    def listen(self):
-        while True:
-            connectedClient, addr = self.acceptClients()
-            connectedClient.settimeout(10)
-            threading.Thread(target=self.listenToClient, args=(connectedClient, addr)).start()
-            print "2"
-
-
     def acceptClients(self):
         return self.serverSocketForClients.accept()
 
-    def listenToClient(self, client, addr):
-        while True:
-            clientMove = client.recv(2048)
-            if clientMove:
-                if clientMove[5] == 'Q':
-                    self.giveQuestionToClient(client, clientMove)
-                elif clientMove[5] == 'S':
-                    questionNumber, answer = self.takeAnswerToClient(clientMove)
-                    print questionNumber, answer
+    def listenToClient(self, client):
+        return client.recv(2048)
 
     def sendToClient(self, client, message):
         client.send(message)
@@ -82,18 +66,15 @@ class MultiplexerServer:
 
 
 if __name__ == "__main__":
-    questionNumber = ""
-    answer = ""
-    MultiplexerServer(13000, 12000).listen()
-    # while True:
-    #     connectedClient, addr = aa.acceptClients()
-    #     threading.Thread(target=aa.listenToClient, args=(connectedClient, addr)).start()
-        # print clientMove
-        # if clientMove == "":
-        #     continue
-        # elif clientMove[5] == 'Q':
-        #     aa.giveQuestionToClient(connectedClient, clientMove)
-        # elif clientMove[5] == 'S':
-        #     questionNumber, answer = aa.takeAnswerToClient(clientMove)
-        #
-        # print addr, questionNumber, answer
+    aa = MultiplexerServer(13000, 12000)
+    while True:
+        connectedClient, addr = aa.acceptClients()
+        clientMove = aa.listenToClient(connectedClient)
+
+        if clientMove == "":
+            continue
+        elif clientMove[5] == 'Q':
+            aa.giveQuestionToClient(connectedClient, clientMove)
+        elif clientMove[5] == 'S':
+            print aa.takeAnswerToClient(clientMove)
+
