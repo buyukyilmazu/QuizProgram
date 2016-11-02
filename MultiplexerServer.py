@@ -4,9 +4,10 @@ from thread import *
 
 class MultiplexerServer:
     localhost = "127.0.0.1"
-    subscribers = {}
 
     def __init__(self, multiplexerServerPort, quizServerPort):
+        self.clients = {}
+        self.nextQuestion = False
         self.multiplexerServerPort = multiplexerServerPort
         self.quizServerPort = quizServerPort
         self.clientSocketForQuizServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -17,7 +18,7 @@ class MultiplexerServer:
         self.serverSocketForClients.bind(('', multiplexerServerPort))
         self.serverSocketForClients.listen(10)
 
-    def listenToClient(self, client):
+    def listenToClient(self, client, addr):
         while True:
             clientMove = client.recv(2048)
             if clientMove == '':
@@ -25,7 +26,9 @@ class MultiplexerServer:
             elif clientMove[5] == 'Q':
                 self.sendQuestionToClient(client, clientMove)
             elif clientMove[5] == 'S':
-                self.parseClientAnswer(clientMove)
+                submittedQuestionId, selectedAnswer = self.parseClientAnswer(clientMove)
+                self.clients.setdefault(addr, []).append([submittedQuestionId, selectedAnswer])
+                print self.clients
 
     def parseClientWish(self, clientWish):
         result = clientWish.split("\n")
@@ -56,4 +59,4 @@ if __name__ == "__main__":
 
     while True:
         connectedClient, addr = aa.serverSocketForClients.accept()
-        start_new_thread(aa.listenToClient, (connectedClient,))
+        start_new_thread(aa.listenToClient, (connectedClient, addr))
