@@ -11,27 +11,19 @@ class QuizServer:
         self.quizServerSocket.bind((QuizServer.localhost, quizServerPort))
         self.quizServerSocket.listen(1)
 
-    def acceptToClient(self):
-        return self.quizServerSocket.accept()
-
-    def listenToClient(self, multiplexerSocket):
-        return multiplexerSocket.recv(2048)
-
-    def sendToClient(self, multiplexerSocket, question):
-        multiplexerSocket.send(question)
-
     def getQuestion(self, clientWish):
         questionFolder = open(clientWish, "r")
         question = questionFolder.read()
         questionFolder.close()
         return question
 
-
 if __name__ == "__main__":
     aa = QuizServer(12000)
-    while True:
-        multiplexerSocket, addr = aa.acceptToClient()
-        clientWish = aa.listenToClient(multiplexerSocket)
-        question = aa.getQuestion(clientWish)
-        aa.sendToClient(multiplexerSocket, question)
+    multiplexerSocket, addr = aa.quizServerSocket.accept()
 
+    while True:
+        clientWish = multiplexerSocket.recv(2048)
+        question = aa.getQuestion(clientWish)
+        multiplexerSocket.send(question)
+
+    multiplexerSocket.close()
