@@ -28,7 +28,7 @@ def addNewPlayer(id):
 
     clients.append(id)
     multiplexerClient.send(getQuestion(1, id))
-    print clients
+    #print clients
 
 def updateGrades(data):
     return
