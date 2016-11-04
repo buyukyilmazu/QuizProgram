@@ -1,7 +1,6 @@
 import socket
 import threading
 import uuid
-import json
 
 localhost = '127.0.0.1'
 multiplexerServerPort = 13000
@@ -43,8 +42,8 @@ def getParameters(message):
     if(len(parameters) > 1):
         return parameters[1].split('&')
 
-def getParameter(parameters, name):
-    for par in parameters:
+def getParameter(message, name):
+    for par in getParameters(message):
         paramater = par.split('=')
         if(paramater[0] == name):
             return paramater[1]
@@ -75,9 +74,11 @@ def listenToClient(client, clientAddress):
             if(message != ''):
                 if(message == 'Question_1.html'):
 
-                    clientCollection.append(clientAddress)
+                    id = createId()
 
-                    quizServerSocket.send('1&')
+                    clientCollection.append({id , client})
+
+                    quizServerSocket.send('1&' + id)
 
                     message = quizServerSocket.recv(4096)
 
@@ -85,19 +86,10 @@ def listenToClient(client, clientAddress):
                     client.send('Content-Type: text/html\n')
                     client.send('\n')
                     client.send(message)
-                    client.close()
-                    return False
-
-                elif(message == '127.0.0.1:13000/GetId'):
-
-                    id = createId()
-                    client.send(id)
-                    client.close()
-                    return False
 
                 elif(message[0] == 'S'):
 
-                    quizServerSocket.send('3&')
+                    quizServerSocket.send('3&' + getParameter(message, 'client_id'))
 
                     message = quizServerSocket.recv(4096)
 
@@ -105,11 +97,9 @@ def listenToClient(client, clientAddress):
                     client.send('Content-Type: text/html\n')
                     client.send('\n')
                     client.send(message)
-                    client.close()
-
-                    return False
 
             print message
+
         except Exception as e:
             print e
             client.close()
