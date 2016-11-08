@@ -2,7 +2,6 @@ import socket
 from thread import *
 import time
 
-
 class MultiplexerServer:
     localhost = "127.0.0.1"
     answerPage = "<!DOCTYPE html><html><body><H1>Thanks for answer</H1></body></html>"
