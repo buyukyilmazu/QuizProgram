@@ -89,7 +89,10 @@ def listenToClient(client, clientAddress):
 
                 elif(message[0] == 'S'):
 
-                    quizServerSocket.send('3&' + getParameter(message, 'client_id'))
+                    client_id = getParameter(message, 'client_id')
+
+                    quizServerSocket.send('3&' + client_id)
+                    print client_id
 
                     message = quizServerSocket.recv(4096)
 
@@ -97,8 +100,6 @@ def listenToClient(client, clientAddress):
                     client.send('Content-Type: text/html\n')
                     client.send('\n')
                     client.send(message)
-
-            print message
 
         except Exception as e:
             print e
