@@ -9,8 +9,6 @@ class MultiplexerServer:
 
     def __init__(self, multiplexerServerPort, quizServerPort):
         self.clients = {}
-        self.questionID = ""
-        self.nextQuestion = False
         self.multiplexerServerPort = multiplexerServerPort
         self.quizServerPort = quizServerPort
         self.clientSocketForQuizServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
@@ -19,43 +17,45 @@ class MultiplexerServer:
         self.serverSocketForClients = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverSocketForClients.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.serverSocketForClients.bind(('', multiplexerServerPort))
-        self.serverSocketForClients.listen(10)
+        self.serverSocketForClients.listen(500)
 
     def listenToClient(self, client, addr):
-
+        questionID = ""
         while True:
             try:
                 clientMove = client.recv(2048)
             except socket.timeout:
                 client.send(MultiplexerServer.timeoutPage)
-                self.clients.setdefault(addr[0], []).append([self.questionID, "-1", "-1"])
-                start_new_thread(self.senInformationToWebServer,
-                                 (addr[0], self.questionID, "-1", "-1"))
+                self.clients.setdefault(addr[0], {})
+                self.clients[addr[0]].setdefault(questionID, [])
+                self.clients[addr[0]][questionID] = ["-1", "-1"]
+                start_new_thread(self.sendInformationToWebServer, (addr[0], questionID, "-1", "-1"))
                 break
             self.answerTime = time.time()
 
             if clientMove:
                 if clientMove[5] == 'Q':
-                    self.questionID = clientMove[14:clientMove.index(".")]
+                    questionID = clientMove[14:clientMove.index(".")]
                     start_new_thread(self.sendQuestionToClient,(client, clientMove))
                 elif clientMove[5] == 'S':
                     submittedQuestionId, selectedAnswer = self.parseClientAnswer(clientMove)
 
-                    if self.clients.get(addr[0]):
-                        for i in self.clients[addr[0]]:
-                            if i[0] == submittedQuestionId:
-                                client.close()
-                                return
+                    try:
+                        if self.clients[addr[0]][submittedQuestionId]:
+                            break
+                    except:
+                        pass
 
                     self.resultTime = self.answerTime - self.askTime
-                    self.clients.setdefault(addr[0], []).append([submittedQuestionId, selectedAnswer, self.resultTime])
-                    start_new_thread(self.senInformationToWebServer,
+                    self.clients.setdefault(addr[0], {})
+                    self.clients[addr[0]].setdefault(submittedQuestionId, [])
+                    self.clients[addr[0]][submittedQuestionId] = [selectedAnswer, self.resultTime]
+                    start_new_thread(self.sendInformationToWebServer,
                                      (addr[0], submittedQuestionId, selectedAnswer, str(self.resultTime)))
                     client.send('HTTP/1.1 200 OK\n')
                     client.send('Content-Type: text/html\n')
                     client.send('\n')
                     client.send(MultiplexerServer.answerPage)
-                    print self.clients
                     break
                 else:
                     break
@@ -80,8 +80,8 @@ class MultiplexerServer:
         return submittedQuestionId, selectedAnswer
 
     def sendQuestionToClient(self, connectedClient, clientWish):
-        self.clientSocketForQuizServer.send("sendQuestion")
         clientWish = self.parseClientWish(clientWish)
+        clientWish = "question " + clientWish
         self.clientSocketForQuizServer.send(clientWish)
         question = self.clientSocketForQuizServer.recv(2048)
         connectedClient.send('HTTP/1.1 200 OK\n')
@@ -90,12 +90,9 @@ class MultiplexerServer:
         connectedClient.send(question)
         self.askTime = time.time()
 
-    def senInformationToWebServer(self, addr, questionID, selectedAnswer, resultTime):
-        self.clientSocketForQuizServer.send("getInformation")
-        self.clientSocketForQuizServer.send(addr)
-        self.clientSocketForQuizServer.send(questionID)
-        self.clientSocketForQuizServer.send(selectedAnswer)
-        self.clientSocketForQuizServer.send(resultTime)
+    def sendInformationToWebServer(self, addr, questionID, selectedAnswer, resultTime):
+        information = "information " + addr + " " + questionID + " " + selectedAnswer + " " + resultTime
+        self.clientSocketForQuizServer.send(information)
 
 if __name__ == "__main__":
     multiplexerPort = int(raw_input("Please enter multiplexing server port number: "))

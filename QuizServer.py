@@ -9,7 +9,7 @@ class QuizServer:
         self.quizServerSocket = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.quizServerSocket.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
         self.quizServerSocket.bind((QuizServer.localhost, quizServerPort))
-        self.quizServerSocket.listen(1)
+        self.quizServerSocket.listen(500)
 
     def getQuestion(self, clientWish):
         questionFolder = open(clientWish, "r")
@@ -18,6 +18,9 @@ class QuizServer:
         return question
 
 if __name__ == "__main__":
+    answers = {'1': "c", '2': "b", '3': "d", '4': "a", '5': "c",
+               '6': "a", '7': "d", '8': "b", '9': "e", '10': "e"}
+    score = {}
     clients = {}
     clientIP = ""
     submittedQuestionId = ""
@@ -31,18 +34,25 @@ if __name__ == "__main__":
 
     while True:
         command = multiplexerSocket.recv(2048)
-        if command == "sendQuestion":
-            clientWish = multiplexerSocket.recv(2048)
-            question = QS.getQuestion(clientWish)
+        command = command.split()
+        if command[0] == "question":
+            question = QS.getQuestion(command[1])
             multiplexerSocket.send(question)
             command = ""
-        elif command == "getInformation":
-            clientIP = multiplexerSocket.recv(2048)
-            submittedQuestionId = multiplexerSocket.recv(2048)
-            selectedAnswer = multiplexerSocket.recv(2048)
-            resultTime = multiplexerSocket.recv(2048)
-            clients.setdefault(clientIP, []).append([submittedQuestionId, selectedAnswer, resultTime])
+        elif command[0] == "information":
+            clientIP = command[1]
+            submittedQuestionId = command[2]
+            selectedAnswer = command[3]
+            resultTime = command[4]
+            clients.setdefault(clientIP, {})
+            clients[clientIP].setdefault(submittedQuestionId, [])
+            clients[clientIP][submittedQuestionId] = [selectedAnswer, resultTime]
+            if clients[clientIP][submittedQuestionId][0] == answers[submittedQuestionId]:
+                questionScore = 10
+            else:
+                questionScore = 0
+            score.setdefault(clientIP, {})
+            score[clientIP][submittedQuestionId] = questionScore
             command = ""
-            print clients
 
     multiplexerSocket.close()
