@@ -29,13 +29,15 @@ class MultiplexerServer:
             except socket.timeout:
                 client.send(MultiplexerServer.timeoutPage)
                 self.clients.setdefault(addr[0], []).append([self.questionID, "-1", "-1"])
+                start_new_thread(self.senInformationToWebServer,
+                                 (addr[0], self.questionID, "-1", "-1"))
                 break
             self.answerTime = time.time()
 
             if clientMove:
                 if clientMove[5] == 'Q':
                     self.questionID = clientMove[14:clientMove.index(".")]
-                    self.sendQuestionToClient(client, clientMove)
+                    start_new_thread(self.sendQuestionToClient,(client, clientMove))
                 elif clientMove[5] == 'S':
                     submittedQuestionId, selectedAnswer = self.parseClientAnswer(clientMove)
 
@@ -47,6 +49,8 @@ class MultiplexerServer:
 
                     self.resultTime = self.answerTime - self.askTime
                     self.clients.setdefault(addr[0], []).append([submittedQuestionId, selectedAnswer, self.resultTime])
+                    start_new_thread(self.senInformationToWebServer,
+                                     (addr[0], submittedQuestionId, selectedAnswer, str(self.resultTime)))
                     client.send('HTTP/1.1 200 OK\n')
                     client.send('Content-Type: text/html\n')
                     client.send('\n')
@@ -76,6 +80,7 @@ class MultiplexerServer:
         return submittedQuestionId, selectedAnswer
 
     def sendQuestionToClient(self, connectedClient, clientWish):
+        self.clientSocketForQuizServer.send("sendQuestion")
         clientWish = self.parseClientWish(clientWish)
         self.clientSocketForQuizServer.send(clientWish)
         question = self.clientSocketForQuizServer.recv(2048)
@@ -85,31 +90,19 @@ class MultiplexerServer:
         connectedClient.send(question)
         self.askTime = time.time()
 
+    def senInformationToWebServer(self, addr, questionID, selectedAnswer, resultTime):
+        self.clientSocketForQuizServer.send("getInformation")
+        self.clientSocketForQuizServer.send(addr)
+        self.clientSocketForQuizServer.send(questionID)
+        self.clientSocketForQuizServer.send(selectedAnswer)
+        self.clientSocketForQuizServer.send(resultTime)
+
 if __name__ == "__main__":
-    aa = MultiplexerServer(13000, 12000)
+    multiplexerPort = int(raw_input("Please enter multiplexing server port number: "))
+    webPort = int(raw_input("Please enter web server port number: "))
+    MS = MultiplexerServer(multiplexerPort, webPort)
 
     while True:
-        connectedClient, addr = aa.serverSocketForClients.accept()
+        connectedClient, addr = MS.serverSocketForClients.accept()
         connectedClient.settimeout(30)
-        start_new_thread(aa.listenToClient, (connectedClient, addr))
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
-
+        start_new_thread(MS.listenToClient, (connectedClient, addr))

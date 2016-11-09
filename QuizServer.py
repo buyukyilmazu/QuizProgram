@@ -18,12 +18,31 @@ class QuizServer:
         return question
 
 if __name__ == "__main__":
-    aa = QuizServer(12000)
-    multiplexerSocket, addr = aa.quizServerSocket.accept()
+    clients = {}
+    clientIP = ""
+    submittedQuestionId = ""
+    selectedAnswer = ""
+    resultTime = ""
+    command = ""
+    webPort = int(raw_input("Please enter web server port number: "))
+    QS = QuizServer(webPort)
+
+    multiplexerSocket, addr = QS.quizServerSocket.accept()
 
     while True:
-        clientWish = multiplexerSocket.recv(2048)
-        question = aa.getQuestion(clientWish)
-        multiplexerSocket.send(question)
+        command = multiplexerSocket.recv(2048)
+        if command == "sendQuestion":
+            clientWish = multiplexerSocket.recv(2048)
+            question = QS.getQuestion(clientWish)
+            multiplexerSocket.send(question)
+            command = ""
+        elif command == "getInformation":
+            clientIP = multiplexerSocket.recv(2048)
+            submittedQuestionId = multiplexerSocket.recv(2048)
+            selectedAnswer = multiplexerSocket.recv(2048)
+            resultTime = multiplexerSocket.recv(2048)
+            clients.setdefault(clientIP, []).append([submittedQuestionId, selectedAnswer, resultTime])
+            command = ""
+            print clients
 
     multiplexerSocket.close()
