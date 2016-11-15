@@ -3,20 +3,19 @@ from thread import *
 import time
 
 class MultiplexerServer:
-    localhost = "127.0.0.1"
     answerPage = "<!DOCTYPE html><html><body><H1>Thanks for answer</H1></body></html>"
     timeoutPage = "<!DOCTYPE html><html><body><H1>Timeout</H1></body></html>"
 
-    def __init__(self, multiplexerServerPort, quizServerPort):
+    def __init__(self, multiplexerServerPort, quizServerPort, multiplexerServerIP):
         self.clients = {}
         self.multiplexerServerPort = multiplexerServerPort
         self.quizServerPort = quizServerPort
         self.clientSocketForQuizServer = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
-        self.clientSocketForQuizServer.connect((MultiplexerServer.localhost, self.quizServerPort))
+        self.clientSocketForQuizServer.connect((multiplexerServerIP, self.quizServerPort))
 
         self.serverSocketForClients = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
         self.serverSocketForClients.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
-        self.serverSocketForClients.bind(('', multiplexerServerPort))
+        self.serverSocketForClients.bind((multiplexerServerIP, multiplexerServerPort))
         self.serverSocketForClients.listen(500)
 
     def listenToClient(self, client, addr):
@@ -95,9 +94,16 @@ class MultiplexerServer:
         self.clientSocketForQuizServer.send(information)
 
 if __name__ == "__main__":
+    s = socket.socket(socket.AF_INET, socket.SOCK_DGRAM)
+    s.connect(('google.com', 0))
+    localhost = s.getsockname()
+    s.close()
+    print "Multiplexer server wireless LAN adapter Wi-Fi | IPv4 Address: ", localhost[0]
+
     multiplexerPort = int(raw_input("Please enter multiplexing server port number: "))
     webPort = int(raw_input("Please enter web server port number: "))
-    MS = MultiplexerServer(multiplexerPort, webPort)
+
+    MS = MultiplexerServer(multiplexerPort, webPort, localhost[0])
 
     while True:
         connectedClient, addr = MS.serverSocketForClients.accept()
